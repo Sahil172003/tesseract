@@ -1,20 +1,31 @@
-import { apiClient } from './client';
+const API_BASE_URL = 'http://localhost:8000'
 
-export interface ImageGenerationRequest {
-  prompt: string;
-  n?: number;
-  size?: string;
+export interface ImageGenerationParams {
+  prompt: string
+  n?: number
+  size?: string
 }
 
 export interface ImageGenerationResponse {
-  images: string[];
-  prompt: string;
+  images: string[]
+  prompt: string
 }
 
-// Image Generation API functions
 export const imageGenerationApi = {
-  // Generate images
-  async generateImages(request: ImageGenerationRequest): Promise<ImageGenerationResponse> {
-    return apiClient.post('/image-generation', request);
+  async generateImages(params: ImageGenerationParams): Promise<ImageGenerationResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/image-generation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.detail || 'Failed to generate images')
+    }
+
+    return response.json()
   }
-};
+}

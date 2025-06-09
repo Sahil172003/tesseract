@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
+import { imageGenerationApi } from "@/lib/api/image-generation"
 
 export default function ImageGenerationPage() {
   const { toast } = useToast()
@@ -20,7 +21,7 @@ export default function ImageGenerationPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [resolution, setResolution] = useState("1024x1024")
   const [style, setStyle] = useState("realistic")
-  const [numImages, setNumImages] = useState(4)
+  const [numImages, setNumImages] = useState(1) // Changed from 4 to 1
   const [promptSuggestions, setPromptSuggestions] = useState<string[]>([
     "A futuristic cityscape with flying cars and neon lights",
     "A serene mountain landscape with a lake at sunset",
@@ -29,8 +30,8 @@ export default function ImageGenerationPage() {
     "A steampunk-inspired mechanical dragon",
   ])
 
-  // Generate images
-  const handleGenerateImages = () => {
+  // Generate images - FIXED VERSION
+  const handleGenerateImages = async () => {
     if (!prompt.trim()) {
       toast({
         title: "Prompt required",
@@ -44,34 +45,30 @@ export default function ImageGenerationPage() {
     setGeneratedImages([])
     setSelectedImage(null)
 
-    // Simulate image generation with progress
-    const totalTime = 3000
-    const interval = 100
-    const steps = totalTime / interval
-    let currentStep = 0
+    try {
+      const response = await imageGenerationApi.generateImages({
+        prompt: prompt.trim(),
+        n: numImages,
+        size: resolution // Use the actual resolution setting
+      })
 
-    const timer = setInterval(() => {
-      currentStep++
-      if (currentStep >= steps) {
-        clearInterval(timer)
-
-        // Generate placeholder images
-        // TODO : Add actual working API
-        const images = Array.from({ length: numImages }).map(
-          (_, i) => `/placeholder.svg?height=512&width=512&text=Generated+Image+${i + 1}`,
-        )
-
-        setGeneratedImages(images)
-        setSelectedImage(images[0])
-        setIsGenerating(false)
-
-        toast({
-          title: "Images generated",
-          description: `Generated ${numImages} images based on your prompt.`,
-          variant: "success",
-        })
-      }
-    }, interval)
+      setGeneratedImages(response.images)
+      setSelectedImage(response.images[0])
+      
+      toast({
+        title: "Images generated",
+        description: `Generated ${response.images.length} images based on your prompt.`,
+      })
+    } catch (error) {
+      console.error("Image generation error:", error)
+      toast({
+        title: "Generation failed",
+        description: "Failed to generate images. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   // Handle image selection
@@ -83,11 +80,17 @@ export default function ImageGenerationPage() {
   const handleDownloadImage = () => {
     if (!selectedImage) return
 
-    // In a real app, this would download the actual image
+    // Create download link for base64 image
+    const link = document.createElement('a')
+    link.href = selectedImage
+    link.download = `generated-image-${Date.now()}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
     toast({
       title: "Image downloaded",
       description: "The image has been downloaded to your device.",
-      variant: "success",
     })
   }
 
@@ -227,7 +230,7 @@ export default function ImageGenerationPage() {
                           <Slider
                             value={[numImages]}
                             min={1}
-                            max={8}
+                            max={4}
                             step={1}
                             onValueChange={(value) => setNumImages(value[0])}
                             className="py-2"
