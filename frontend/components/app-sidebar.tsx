@@ -54,12 +54,12 @@ export function AppSidebar() {
     },
     {
       title: "Chat with SQLite",
-      href: "/dashboard/document-chat/sqlite",
+      href: "/dashboard/sqlite",
       icon: Database,
     },
     {
       title: "Data Visualization",
-      href: "/dashboard/document-chat/visualization",
+      href: "/dashboard/visualization",
       icon: BarChart,
     },
     {
