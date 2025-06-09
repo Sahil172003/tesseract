@@ -22,6 +22,8 @@ for part in response.candidates[0].content.parts:
   if part.text is not None:
     print(part.text)
   elif part.inline_data is not None:
-    image = Image.open(BytesIO((part.inline_data.data)))
+    # Decode base64 data before creating BytesIO object
+    image_data = base64.b64decode(part.inline_data.data)
+    image = Image.open(BytesIO(image_data))
     image.save('gemini-native-image.png')
     image.show()

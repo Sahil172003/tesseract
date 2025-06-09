@@ -46,24 +46,35 @@ export default function ImageGenerationPage() {
     setSelectedImage(null)
 
     try {
+      console.log('Starting image generation with prompt:', prompt)
+      
       const response = await imageGenerationApi.generateImages({
         prompt: prompt.trim(),
         n: numImages,
-        size: resolution // Use the actual resolution setting
+        size: resolution
       })
 
-      setGeneratedImages(response.images)
-      setSelectedImage(response.images[0])
-      
-      toast({
-        title: "Images generated",
-        description: `Generated ${response.images.length} images based on your prompt.`,
-      })
+      console.log('Received response:', response)
+
+      if (response.images && response.images.length > 0) {
+        setGeneratedImages(response.images)
+        setSelectedImage(response.images[0])
+        
+        toast({
+          title: "Images generated successfully",
+          description: `Generated ${response.images.length} images based on your prompt.`,
+        })
+      } else {
+        throw new Error('No images received from the server')
+      }
     } catch (error) {
       console.error("Image generation error:", error)
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      
       toast({
         title: "Generation failed",
-        description: "Failed to generate images. Please try again.",
+        description: `Failed to generate images: ${errorMessage}`,
         variant: "destructive",
       })
     } finally {
