@@ -194,7 +194,9 @@ export function AppSidebar() {
                   <div className="flex items-center gap-3 py-1.5">
                     <Avatar className="h-9 w-9 border-2 border-primary/20 transition-all hover:border-primary">
                       <AvatarImage src="/placeholder-user.jpg" alt="User" />
-                      <AvatarFallback>o</AvatarFallback>
+                      <AvatarFallback>
+  <User className="w-4 h-4" />
+</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col items-start text-left">
                       <span className="text-sm font-medium">My Account</span>
