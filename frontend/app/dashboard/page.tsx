@@ -75,7 +75,7 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      <motion.div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3" variants={container} initial="hidden" animate="show">
+      <motion.div className="grid gap-8 md:grid-cols-4 xl:grid-cols-4" variants={container} initial="hidden" animate="show">
         <motion.div variants={item}>
           <Card className="highlight-card h-full border border-border/50 transition-all duration-300 hover:border-primary/20 hover:shadow-lg">
             <CardHeader className="pb-4">
@@ -187,7 +187,44 @@ export default function DashboardPage() {
             </CardFooter>
           </Card>
         </motion.div>
+        <motion.div variants={item}>
+          <Card className="highlight-card h-full border border-border/50 transition-all duration-300 hover:border-primary/20 hover:shadow-lg">
+            <CardHeader className="pb-4">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 transition-all duration-300 group-hover:bg-primary/20">
+                <ImageIcon className="h-6 w-6 text-primary" />
+              </div>
+              <CardTitle className="text-2xl">Image Generation</CardTitle>
+              <CardDescription className="text-base">Generate stunning images with AI</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3 text-sm">
+                <li className="flex items-start gap-2">
+                  <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <span>Create images from text descriptions</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <span>Customize style, resolution, and more</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <span>Download and share your creations</span>
+                </li>
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <Link href="/dashboard/image-generation" passHref className="w-full">
+                <Button className="w-full shadow-md hover:shadow-lg transition-all duration-300 hover:translate-y-[-2px] group">
+                  Get Started
+                  <ChevronRight className="h-4 w-4 ml-1 transition-transform duration-300 group-hover:translate-x-1" />
+                </Button>
+              </Link>
+            </CardFooter>
+          </Card>
+        </motion.div>
       </motion.div>
+
+      
 
       <motion.div 
         className="mt-8" 

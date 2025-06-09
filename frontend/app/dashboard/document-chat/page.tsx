@@ -29,14 +29,14 @@ export default function DocumentChatPage() {
         <p className="text-muted-foreground mt-2">Choose an option below to start chatting with your data.</p>
       </motion.div>
 
-      <motion.div className="grid gap-6 md:grid-cols-3" variants={container} initial="hidden" animate="show">
+      <motion.div className="grid gap-6 md:grid-cols-2" variants={container} initial="hidden" animate="show">
         <motion.div variants={item}>
           <Card className="highlight-card h-full">
             <CardHeader>
               <div className="feature-icon mb-2">
                 <FileText className="h-6 w-6" />
               </div>
-              <CardTitle>Chat with OCR</CardTitle>
+              <CardTitle>Chat with Legacy Model</CardTitle>
               <CardDescription>Upload and chat with any document</CardDescription>
             </CardHeader>
             <CardContent>
@@ -59,7 +59,7 @@ export default function DocumentChatPage() {
               <div className="feature-icon mb-2">
                 <Database className="h-6 w-6" />
               </div>
-              <CardTitle>Chat with SQLite</CardTitle>
+              <CardTitle>Chat with Open-Source Model</CardTitle>
               <CardDescription>Query databases with natural language</CardDescription>
             </CardHeader>
             <CardContent>
@@ -76,7 +76,7 @@ export default function DocumentChatPage() {
           </Card>
         </motion.div>
 
-        <motion.div variants={item}>
+        {/* <motion.div variants={item}>
           <Card className="highlight-card h-full">
             <CardHeader>
               <div className="feature-icon mb-2">
@@ -97,7 +97,7 @@ export default function DocumentChatPage() {
               </Link>
             </CardFooter>
           </Card>
-        </motion.div>
+        </motion.div> */}
       </motion.div>
     </div>
   )
