@@ -92,7 +92,7 @@ export default function DocumentChatPage() {
               </p>
             </CardContent>
             <CardFooter>
-              <Link href="/dashboard/document-chat/visualization" passHref className="w-full">
+              <Link href="/dashboard/document-chat/ocr/open-ai" passHref className="w-full">
                 <Button className="w-full shadow-md hover:shadow-lg transition-all duration-300">Select</Button>
               </Link>
             </CardFooter>

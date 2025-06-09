@@ -41,16 +41,8 @@ export function AppSidebar() {
       href: "/dashboard",
       icon: Home,
     },
-    {
-      title: "Document Chat",
-      href: "/dashboard/document-chat",
-      icon: FileText,
-    },
-    {
-      title: "Image Generation",
-      href: "/dashboard/image-generation",
-      icon: ImageIcon,
-    },
+   
+    
   ]
 
   // Define document chat sub-items
@@ -70,20 +62,16 @@ export function AppSidebar() {
       href: "/dashboard/document-chat/visualization",
       icon: BarChart,
     },
+    {
+      title: "Image Generation",
+      href: "/dashboard/image-generation",
+      icon: ImageIcon,
+    },
   ]
 
   // Define user menu items
   const userMenuItems = [
-    {
-      title: "Profile",
-      href: "/dashboard/profile",
-      icon: User,
-    },
-    {
-      title: "Settings",
-      href: "/dashboard/settings",
-      icon: Settings,
-    },
+    
     {
       title: "Sign Out",
       href: "/sign-in",
@@ -145,11 +133,11 @@ export function AppSidebar() {
             ))}
           </SidebarMenu>
 
-          {pathname.includes("/dashboard/document-chat") && (
+          
             <>
               <SidebarSeparator className="my-3" />
               <div className="px-4 py-2">
-                <h4 className="text-xs font-medium text-sidebar-foreground/70 tracking-wider uppercase">Document Chat</h4>
+                <h4 className="text-xs font-medium text-sidebar-foreground/70 tracking-wider uppercase">Start chating with</h4>
               </div>
               <SidebarMenu>
                 {documentChatItems.map((item, i) => (
@@ -177,7 +165,7 @@ export function AppSidebar() {
                 ))}
               </SidebarMenu>
             </>
-          )}
+          
         </SidebarContent>
         <SidebarFooter>
           <SidebarSeparator className="my-2" />
@@ -206,11 +194,11 @@ export function AppSidebar() {
                   <div className="flex items-center gap-3 py-1.5">
                     <Avatar className="h-9 w-9 border-2 border-primary/20 transition-all hover:border-primary">
                       <AvatarImage src="/placeholder-user.jpg" alt="User" />
-                      <AvatarFallback>JD</AvatarFallback>
+                      <AvatarFallback>o</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col items-start text-left">
-                      <span className="text-sm font-medium">John Doe</span>
-                      <span className="text-xs text-sidebar-foreground/70">john@example.com</span>
+                      <span className="text-sm font-medium">My Account</span>
+                      <span className="text-xs text-sidebar-foreground/70"></span>
                     </div>
                   </div>
                 </Button>

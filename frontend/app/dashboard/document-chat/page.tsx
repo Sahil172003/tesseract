@@ -69,7 +69,7 @@ export default function DocumentChatPage() {
               </p>
             </CardContent>
             <CardFooter>
-              <Link href="/dashboard/document-chat/sqlite" passHref className="w-full">
+              <Link href="/dashboard/document-chat/open-source" passHref className="w-full">
                 <Button className="w-full shadow-md hover:shadow-lg transition-all duration-300">Select</Button>
               </Link>
             </CardFooter>
