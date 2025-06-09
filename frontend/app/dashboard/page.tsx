@@ -240,7 +240,7 @@ export default function DashboardPage() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        <Card className="bg-card/50 border-border/50 transition-all duration-300 hover:border-primary/10">
+        {/* <Card className="bg-card/50 border-border/50 transition-all duration-300 hover:border-primary/10">
           <div className="px-6 py-8 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-4">
               <Clock className="h-6 w-6 text-muted-foreground" />
@@ -250,7 +250,7 @@ export default function DashboardPage() {
               You haven't used any features yet. Get started by selecting one of the options above.
             </p>
           </div>
-        </Card>
+        </Card> */}
       </motion.div>
     </div>
   )
