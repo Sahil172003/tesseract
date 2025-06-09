@@ -2,24 +2,49 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
-import { Database, Upload, Send, X, Loader2, FileUp } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
+import { Database, Upload, Send, X, Loader2, FileUp, History, Trash2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
+
+const API_BASE_URL = "http://localhost:8000"
+
+interface DatabaseInfo {
+  tables: string[]
+  table_info: { [key: string]: string }
+}
+
+interface QueryResponse {
+  response: string
+  data?: any[]
+  sql_query?: string
+  timestamp: string
+}
+
+interface ChatMessage {
+  role: "user" | "assistant"
+  content: string
+  data?: any[]
+  sql_query?: string
+  timestamp: string
+}
 
 export default function SQLiteChatPage() {
   const { toast } = useToast()
   const [file, setFile] = useState<File | null>(null)
-  const [databaseInfo, setDatabaseInfo] = useState<string>("")
-  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string; data?: any[] }[]>([])
+  const [sessionId, setSessionId] = useState<string>("")
+  const [databaseInfo, setDatabaseInfo] = useState<DatabaseInfo | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [showHistory, setShowHistory] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -28,89 +53,225 @@ export default function SQLiteChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
+  // Auto-scroll when messages change
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  // Load chat history when session is established
+  const loadChatHistory = async (sessionId: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/sql-chat/chat-history/${sessionId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setMessages(data.messages || [])
+      }
+    } catch (error) {
+      console.error("Failed to load chat history:", error)
+    }
+  }
+
   // Handle file upload
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
 
     setFile(selectedFile)
     setIsProcessing(true)
     setUploadProgress(0)
+    setMessages([]) // Clear previous messages
 
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          return 100
+    try {
+      // First, test if the API is reachable
+      console.log("Testing API connection...")
+      try {
+        const testResponse = await fetch(`${API_BASE_URL}/api/sql-chat/debug`)
+        const testText = await testResponse.text()
+        console.log("Debug response status:", testResponse.status)
+        console.log("Debug response:", testText)
+        
+        if (!testResponse.ok) {
+          console.error("Debug endpoint failed - backend might not be running properly")
         }
-        return prev + 5
-      })
-    }, 100)
+      } catch (testError) {
+        console.error("API connection test failed:", testError)
+        throw new Error("Backend server is not responding. Please make sure the backend is running on port 8000.")
+      }
 
-    // Simulate database processing
-    setTimeout(() => {
-      clearInterval(interval)
+      const formData = new FormData()
+      formData.append("file", selectedFile)
+
+      console.log("Uploading to:", `${API_BASE_URL}/api/sql-chat/upload-database`)
+      console.log("File details:", {
+        name: selectedFile.name,
+        size: selectedFile.size,
+        type: selectedFile.type
+      })
+
+      // Simulate upload progress
+      const uploadInterval = setInterval(() => {
+        setUploadProgress((prev) => Math.min(prev + 15, 90))
+      }, 200)
+
+      const response = await fetch(`${API_BASE_URL}/api/sql-chat/upload-database`, {
+        method: "POST",
+        body: formData,
+      })
+
+      clearInterval(uploadInterval)
       setUploadProgress(100)
 
-      // Mock database info
-      // TODO : Add actual working API
-      const mockDatabaseInfo =
-        "Database contains the following tables:\n- users (id, name, email, created_at)\n- products (id, name, price, category_id)\n- categories (id, name)\n- orders (id, user_id, total, status, created_at)"
-      setDatabaseInfo(mockDatabaseInfo)
+      console.log("Upload response status:", response.status)
+      console.log("Upload response headers:", Object.fromEntries(response.headers.entries()))
+
+      if (!response.ok) {
+        let errorMessage = "Upload failed"
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.detail || `HTTP ${response.status}: ${response.statusText}`
+          console.error("Upload error details:", errorData)
+        } catch (parseError) {
+          console.error("Failed to parse error response as JSON")
+          try {
+            const errorText = await response.text()
+            console.error("Raw error response:", errorText)
+            errorMessage = `HTTP ${response.status}: ${errorText || response.statusText}`
+          } catch (textError) {
+            console.error("Failed to get error text:", textError)
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`
+          }
+        }
+        throw new Error(errorMessage)
+      }
+
+      const data = await response.json()
+      console.log("Upload successful:", data)
+      
+      setSessionId(data.session_id)
+      setDatabaseInfo(data.database_info)
       setIsProcessing(false)
+
+      // Load any existing chat history for this session
+      await loadChatHistory(data.session_id)
 
       toast({
         title: "Database loaded successfully",
-        description: "You can now query your database using natural language.",
-        variant: "success",
+        description: "You can now query your database using natural language with Llama 405B.",
+        variant: "default",
       })
-    }, 2000)
+    } catch (error) {
+      console.error("Upload error:", error)
+      setIsProcessing(false)
+      setFile(null)
+      setUploadProgress(0)
+
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload database",
+        variant: "destructive",
+      })
+    }
   }
 
   // Handle sending a message
-  const handleSendMessage = () => {
-    if (!inputMessage.trim()) return
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || !sessionId) return
 
-    // Add user message
-    const userMessage = { role: "user" as const, content: inputMessage }
+    const userMessage: ChatMessage = {
+      role: "user",
+      content: inputMessage,
+      timestamp: new Date().toISOString()
+    }
+
+    // Add user message immediately
     setMessages((prev) => [...prev, userMessage])
     setInputMessage("")
-
-    // Simulate AI response
     setIsLoading(true)
-    setTimeout(() => {
-      // Generate mock data for table results
-      const mockData =
-        Math.random() > 0.5
-          ? [
-              { id: 1, name: "John Doe", email: "john@example.com" },
-              { id: 2, name: "Jane Smith", email: "jane@example.com" },
-              { id: 3, name: "Bob Johnson", email: "bob@example.com" },
-            ]
-          : null
 
-      const aiResponse = {
-        role: "assistant" as const,
-        content: `I've translated your query to SQL and executed it. ${mockData ? "Here are the results:" : "The query was executed successfully, but returned no results."}`,
-        data: mockData,
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/sql-chat/query`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          question: inputMessage,
+          session_id: sessionId,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || "Query failed")
       }
+
+      const data: QueryResponse = await response.json()
+
+      const aiResponse: ChatMessage = {
+        role: "assistant",
+        content: data.response,
+        data: data.data,
+        sql_query: data.sql_query,
+        timestamp: data.timestamp
+      }
+
       setMessages((prev) => [...prev, aiResponse])
       setIsLoading(false)
+    } catch (error) {
+      console.error("Query error:", error)
+      setIsLoading(false)
 
-      // Scroll to bottom after message is added
-      setTimeout(scrollToBottom, 100)
-    }, 1500)
+      const errorResponse: ChatMessage = {
+        role: "assistant",
+        content: `Error: ${error instanceof Error ? error.message : "Failed to process query"}`,
+        timestamp: new Date().toISOString()
+      }
+
+      setMessages((prev) => [...prev, errorResponse])
+
+      toast({
+        title: "Query failed",
+        description: error instanceof Error ? error.message : "Failed to process query",
+        variant: "destructive",
+      })
+    }
   }
 
-  // Clear the current database
-  const handleClearDatabase = () => {
+  // Clear the current database and session
+  const handleClearDatabase = async () => {
+    if (sessionId) {
+      try {
+        await fetch(`${API_BASE_URL}/api/sql-chat/session/${sessionId}`, {
+          method: "DELETE",
+        })
+      } catch (error) {
+        console.error("Error clearing session:", error)
+      }
+    }
+
     setFile(null)
-    setDatabaseInfo("")
+    setSessionId("")
+    setDatabaseInfo(null)
     setMessages([])
     setInputMessage("")
     setUploadProgress(0)
     if (fileInputRef.current) fileInputRef.current.value = ""
+
+    toast({
+      title: "Database cleared",
+      description: "Session has been cleared successfully.",
+      variant: "default",
+    })
+  }
+
+  // Clear chat history only
+  const handleClearHistory = () => {
+    setMessages([])
+    toast({
+      title: "Chat history cleared",
+      description: "Local chat history has been cleared.",
+      variant: "default",
+    })
   }
 
   // Trigger file input click
@@ -118,11 +279,23 @@ export default function SQLiteChatPage() {
     fileInputRef.current?.click()
   }
 
+  // Format timestamp for display
+  const formatTimestamp = (timestamp: string) => {
+    try {
+      return new Date(timestamp).toLocaleTimeString()
+    } catch {
+      return ""
+    }
+  }
+
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <h1 className="text-3xl font-bold tracking-tight gradient-text">Chat with SQLite</h1>
-        <p className="text-muted-foreground mt-1">Upload a SQLite database and query it using natural language.</p>
+        <div className="text-muted-foreground mt-1 flex items-center gap-1 flex-wrap">
+          <span>Upload a SQLite database and query it using natural language powered by</span>
+          <Badge variant="secondary" className="ml-1">Llama 405B</Badge>
+        </div>
       </motion.div>
 
       <div className="grid gap-6 md:grid-cols-[1fr_2fr]">
@@ -145,7 +318,7 @@ export default function SQLiteChatPage() {
                   </div>
                   <div className="space-y-1 text-center">
                     <p className="text-sm font-medium">Upload a SQLite database</p>
-                    <p className="text-xs text-muted-foreground">.db or .sqlite files</p>
+                    <p className="text-xs text-muted-foreground">.db, .sqlite, or .sqlite3 files</p>
                   </div>
                   <input
                     ref={fileInputRef}
@@ -153,7 +326,7 @@ export default function SQLiteChatPage() {
                     name="file-upload"
                     type="file"
                     className="sr-only"
-                    accept=".db,.sqlite"
+                    accept=".db,.sqlite,.sqlite3"
                     onChange={handleFileUpload}
                   />
                   <Button
@@ -197,15 +370,44 @@ export default function SQLiteChatPage() {
                     </div>
                   ) : (
                     <motion.div
-                      className="rounded-md border p-3"
+                      className="space-y-4"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.5 }}
                     >
-                      <h3 className="mb-2 text-sm font-medium">Database Schema:</h3>
-                      <pre className="max-h-[300px] overflow-y-auto whitespace-pre-wrap text-xs rounded bg-muted/50 p-3 font-mono">
-                        {databaseInfo}
-                      </pre>
+                      {/* Session Info */}
+                      <div className="rounded-md border p-3 bg-muted/30">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-sm font-medium">Session Active</h3>
+                          <Badge variant="outline" className="text-xs">
+                            {sessionId.substring(0, 8)}...
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Powered by Llama 405B via NVIDIA NIM
+                        </div>
+                      </div>
+
+                      {/* Database Schema */}
+                      <div className="rounded-md border p-3">
+                        <h3 className="mb-2 text-sm font-medium">Database Schema:</h3>
+                        <div className="max-h-[300px] overflow-y-auto space-y-2">
+                          <div className="text-xs rounded bg-muted/50 p-3">
+                            <strong>Tables ({databaseInfo?.tables.length}):</strong>{" "}
+                            {databaseInfo?.tables.join(", ")}
+                          </div>
+                          {databaseInfo?.table_info && Object.entries(databaseInfo.table_info).map(([table, info]) => (
+                            <details key={table} className="text-xs">
+                              <summary className="cursor-pointer font-medium hover:text-primary">
+                                {table}
+                              </summary>
+                              <pre className="mt-1 whitespace-pre-wrap font-mono text-xs bg-muted/50 p-2 rounded">
+                                {info}
+                              </pre>
+                            </details>
+                          ))}
+                        </div>
+                      </div>
                     </motion.div>
                   )}
                 </div>
@@ -220,6 +422,38 @@ export default function SQLiteChatPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
+          {/* Chat Header */}
+          {file && (
+            <div className="flex items-center justify-between p-4 border-b bg-muted/30">
+              <div className="flex items-center space-x-2">
+                <h3 className="text-sm font-medium">SQL Chat</h3>
+                <Badge variant="secondary" className="text-xs">
+                  {messages.filter(m => m.role === "assistant").length} queries
+                </Badge>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowHistory(!showHistory)}
+                  className="text-xs"
+                >
+                  <History className="h-3 w-3 mr-1" />
+                  History
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearHistory}
+                  className="text-xs hover:text-destructive"
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Clear
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto p-4">
             {messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-center">
@@ -227,10 +461,10 @@ export default function SQLiteChatPage() {
                   <Database className="h-6 w-6" />
                 </div>
                 <h3 className="text-lg font-medium">Chat with your database</h3>
-                <p className="mt-2 text-sm text-muted-foreground max-w-md">
+                <div className="mt-2 text-sm text-muted-foreground max-w-md">
                   Upload a SQLite database and ask questions using natural language. Our AI will translate your
-                  questions into SQL queries.
-                </p>
+                  questions into SQL queries using Llama 405B via NVIDIA NIM.
+                </div>
                 {!file && (
                   <Button
                     onClick={triggerFileUpload}
@@ -253,9 +487,30 @@ export default function SQLiteChatPage() {
                       transition={{ duration: 0.3 }}
                     >
                       <div className={`max-w-[80%] ${message.role === "user" ? "chat-bubble-user" : "chat-bubble-ai"}`}>
-                        <p className="text-sm">{message.content}</p>
+                        <div className="flex items-start justify-between mb-1">
+                          <div className="text-sm">{message.content}</div>
+                          {showHistory && (
+                            <span className="text-xs text-muted-foreground ml-2 shrink-0">
+                              {formatTimestamp(message.timestamp)}
+                            </span>
+                          )}
+                        </div>
 
-                        {message.data && (
+                        {/* SQL Query Display */}
+                        {message.sql_query && (
+                          <motion.div
+                            className="mt-2 p-2 bg-muted/50 rounded text-xs font-mono"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.1 }}
+                          >
+                            <div className="text-muted-foreground mb-1">SQL Query:</div>
+                            <code className="text-primary">{message.sql_query}</code>
+                          </motion.div>
+                        )}
+
+                        {/* Data Table Display */}
+                        {message.data && message.data.length > 0 && (
                           <motion.div
                             className="mt-3 overflow-x-auto rounded border bg-background text-foreground"
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -273,7 +528,7 @@ export default function SQLiteChatPage() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y">
-                                {message.data.map((row, rowIndex) => (
+                                {message.data.slice(0, 10).map((row, rowIndex) => (
                                   <tr key={rowIndex} className="divide-x hover:bg-muted/30 transition-colors">
                                     {Object.values(row).map((value, cellIndex) => (
                                       <td key={cellIndex} className="px-3 py-2">
@@ -284,6 +539,11 @@ export default function SQLiteChatPage() {
                                 ))}
                               </tbody>
                             </table>
+                            {message.data.length > 10 && (
+                              <div className="p-2 text-xs text-muted-foreground text-center border-t">
+                                Showing 10 of {message.data.length} rows
+                              </div>
+                            )}
                           </motion.div>
                         )}
                       </div>
@@ -299,7 +559,7 @@ export default function SQLiteChatPage() {
                     <div className="chat-bubble-ai">
                       <div className="flex items-center space-x-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <p className="text-sm">Thinking...</p>
+                        <div className="text-sm">Llama 405B is thinking...</div>
                       </div>
                     </div>
                   </motion.div>
@@ -318,21 +578,27 @@ export default function SQLiteChatPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault()
-                    if (file && !isProcessing) handleSendMessage()
+                    if (file && !isProcessing && !isLoading) handleSendMessage()
                   }
                 }}
                 className="min-h-[60px] flex-1 resize-none rounded-xl border-muted-foreground/20 focus:border-primary"
-                disabled={!file || isProcessing}
+                disabled={!file || isProcessing || isLoading}
               />
               <Button
                 onClick={handleSendMessage}
-                disabled={!file || !inputMessage.trim() || isProcessing}
+                disabled={!file || !inputMessage.trim() || isProcessing || isLoading}
                 className="h-auto rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
               >
                 <Send className="h-4 w-4" />
                 <span className="sr-only">Send</span>
               </Button>
             </div>
+            {file && (
+              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                <span>Press Enter to send, Shift+Enter for new line</span>
+                <span>Session: {sessionId.substring(0, 8)}...</span>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

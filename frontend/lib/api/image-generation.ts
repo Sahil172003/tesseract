@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8000'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export interface ImageGenerationParams {
   prompt: string
@@ -14,10 +14,11 @@ export interface ImageGenerationResponse {
 export const imageGenerationApi = {
   async generateImages(params: ImageGenerationParams): Promise<ImageGenerationResponse> {
     try {
-      console.log('Sending request to:', `${API_BASE_URL}/api/image-generation`)
+      const url = `${API_BASE_URL}/api/image-generation`
+      console.log('Sending request to:', url)
       console.log('Request params:', params)
       
-      const response = await fetch(`${API_BASE_URL}/api/image-generation`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -26,6 +27,7 @@ export const imageGenerationApi = {
       })
 
       console.log('Response status:', response.status)
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
       
       if (!response.ok) {
         const errorText = await response.text()
@@ -49,5 +51,19 @@ export const imageGenerationApi = {
       console.error('API call failed:', error)
       throw error
     }
+  },
+
+  // Add a test method
+  async testConnection(): Promise<{ message: string }> {
+    const url = `${API_BASE_URL}/api/image-generation/test`
+    console.log('Testing connection to:', url)
+    
+    const response = await fetch(url)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+    
+    return response.json()
   }
 }

@@ -1,11 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import image_generation
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables first
 load_dotenv()
+
+# Import routers directly from the routers directory
+from routers import image_generation, sql_chat
 
 app = FastAPI(
     title="Tesseract API",
@@ -16,7 +18,7 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Your frontend URL
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -24,6 +26,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(image_generation.router)
+app.include_router(sql_chat.router)
 
 @app.get("/")
 async def root():
@@ -33,6 +36,28 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
+@app.get("/api/test")
+async def api_test():
+    return {"message": "API is working", "status": "ok"}
+
+# Add a debug endpoint to list all routes
+@app.get("/debug/routes")
+async def debug_routes():
+    routes = []
+    for route in app.routes:
+        if hasattr(route, 'path') and hasattr(route, 'methods'):
+            routes.append({
+                "path": route.path,
+                "methods": list(route.methods) if route.methods else []
+            })
+    return {"routes": routes}
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    print("Starting Tesseract API server...")
+    print("Available endpoints:")
+    print("- http://localhost:8000/")
+    print("- http://localhost:8000/health")
+    print("- http://localhost:8000/api/image-generation/test")
+    print("- http://localhost:8000/debug/routes")
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)

@@ -30,6 +30,7 @@ export default function ImageGenerationPage() {
     "A steampunk-inspired mechanical dragon",
   ])
 
+
   // Generate images - FIXED VERSION
   const handleGenerateImages = async () => {
     if (!prompt.trim()) {
@@ -115,6 +116,21 @@ export default function ImageGenerationPage() {
     setPrompt(suggestion)
   }
 
+ const testConnection = async () => {
+    try {
+      const result = await imageGenerationApi.testConnection()
+      toast({
+        title: "Connection successful",
+        description: result.message,
+      })
+    } catch (error) {
+      toast({
+        title: "Connection failed",
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: "destructive",
+      })
+    }
+  } 
   // Animation variants
   const container = {
     hidden: { opacity: 0 },
