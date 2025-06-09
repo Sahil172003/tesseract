@@ -120,7 +120,7 @@ export default function DashboardPage() {
               <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 transition-all duration-300 group-hover:bg-primary/20">
                 <ImageIcon className="h-6 w-6 text-primary" />
               </div>
-              <CardTitle className="text-2xl">Image Generation</CardTitle>
+              <CardTitle className="text-2xl">Chat with Sql</CardTitle>
               <CardDescription className="text-base">Generate stunning images with AI</CardDescription>
             </CardHeader>
             <CardContent>
@@ -140,7 +140,7 @@ export default function DashboardPage() {
               </ul>
             </CardContent>
             <CardFooter>
-              <Link href="/dashboard/image-generation" passHref className="w-full">
+              <Link href="/dashboard/document-chat/sqlite" passHref className="w-full">
                 <Button className="w-full shadow-md hover:shadow-lg transition-all duration-300 hover:translate-y-[-2px] group">
                   Get Started
                   <ChevronRight className="h-4 w-4 ml-1 transition-transform duration-300 group-hover:translate-x-1" />
