@@ -202,30 +202,7 @@ export default function Home() {
           </Container>
         </section>
 
-        <section className="w-full py-16 md:py-24 lg:py-32 bg-gradient-to-b from-background to-muted/30">
-          <Container size="xl">
-            <motion.div
-              className="flex flex-col items-center justify-center space-y-6 text-center"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-            >
-              <div className="inline-block rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
-                Get Started Today
-              </div>
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Ready to Experience the Future?</h2>
-              <p className="max-w-[600px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
-                Join thousands of users already leveraging the power of AI with our platform.
-              </p>
-              <Link href="/register" passHref>
-                <Button className="mt-4 px-8 py-6 text-lg shadow-lg hover:shadow-primary/25 transition-all duration-300 hover:translate-y-[-2px]">
-                  Create Your Account
-                </Button>
-              </Link>
-            </motion.div>
-          </Container>
-        </section>
+
       </main>
       <footer className="border-t py-8">
         <Container size="xl">

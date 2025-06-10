@@ -94,29 +94,6 @@ export default function DocumentChatPage() {
             </CardFooter>
           </Card>
         </motion.div>
-
-        {/* <motion.div variants={item}>
-          <Card className="highlight-card h-full">
-            <CardHeader>
-              <div className="feature-icon mb-2">
-                <BarChart className="h-6 w-6" />
-              </div>
-              <CardTitle>Data Visualization</CardTitle>
-              <CardDescription>Visualize your data with charts</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm">
-                Upload datasets in CSV or JSON format and generate customized visualizations. Create beautiful charts to
-                understand your data.
-              </p>
-            </CardContent>
-            <CardFooter>
-              <Link href="/dashboard/document-chat/visualization" passHref className="w-full">
-                <Button className="w-full shadow-md hover:shadow-lg transition-all duration-300">Select</Button>
-              </Link>
-            </CardFooter>
-          </Card>
-        </motion.div> */}
       </motion.div>
     </div>
   )
