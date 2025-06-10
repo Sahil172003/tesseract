@@ -73,7 +73,6 @@ export default function DocumentChatPage() {
               <CardDescription>Query databases with natural language</CardDescription>
             </CardHeader>
             <CardContent>
-              <p >
               <div className=" text-purple-100 p-6 rounded-lg shadow-lg">
     <h2 className="text-2xl font-bold text-purple-300 mb-4">Open-Source Models (e.g., NVIDIA’s models)</h2>
     <ul className="list-disc pl-5 space-y-2">
@@ -85,7 +84,6 @@ export default function DocumentChatPage() {
       <li>Community-driven documentation and tutorials available.</li>
     </ul>
   </div>
-              </p>
             </CardContent>
             <CardFooter>
               <Link href="/dashboard/document-chat/open-source" passHref className="w-full">
