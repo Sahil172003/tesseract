@@ -40,10 +40,20 @@ export default function DocumentChatPage() {
               <CardDescription>Upload and chat with any document</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm">
-                Upload PDFs, DOCXs, or images and chat with their contents using OCR technology. Ask questions and get
-                instant answers.
-              </p>
+              <div className=" text-purple-100 p-6 rounded-lg shadow-lg">
+  {/* Legacy Models */}
+  <div className="mb-6">
+    <h2 className="text-2xl font-bold text-purple-300 mb-4">Legacy Models (e.g., Gemini, Claude)</h2>
+    <ul className="list-disc pl-5 space-y-2">
+      <li>Closed-source, accessible via APIs or paid subscriptions.</li>
+      <li>Data privacy controlled by the provider.</li>
+      <li>Often integrated into commercial platforms for enterprise use cases.</li>
+      <li>Regular updates managed by the provider, ensuring stability.</li>
+      <li>Designed with strict safety and moderation filters for public use.</li>
+      <li>Typically require internet connectivity for API access.</li>
+    </ul>
+  </div>
+</div>
             </CardContent>
             <CardFooter>
               <Link href="/dashboard/document-chat/ocr" passHref className="w-full">
@@ -63,9 +73,18 @@ export default function DocumentChatPage() {
               <CardDescription>Query databases with natural language</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm">
-                Upload SQLite database files and query them using natural language instead of SQL. Get results in a
-                readable format.
+              <p >
+              <div className=" text-purple-100 p-6 rounded-lg shadow-lg">
+    <h2 className="text-2xl font-bold text-purple-300 mb-4">Open-Source Models (e.g., NVIDIA’s models)</h2>
+    <ul className="list-disc pl-5 space-y-2">
+      <li>Publicly available models from companies like NVIDIA or community efforts.</li>
+      <li>Performance varies; can be high with proper fine-tuning.</li>
+      <li>Outputs depend on community contributions and training data.</li>
+      <li>Highly customizable; users can modify weights and architecture.</li>
+      <li>Support a wide range of hardware, including GPUs and TPUs.</li>
+      <li>Community-driven documentation and tutorials available.</li>
+    </ul>
+  </div>
               </p>
             </CardContent>
             <CardFooter>

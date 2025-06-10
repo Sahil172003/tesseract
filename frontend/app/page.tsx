@@ -23,7 +23,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex app flex-col">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <Container size="xl" className="flex h-16 items-center justify-between">
           <div className="flex items-center">
@@ -31,7 +31,7 @@ export default function Home() {
               <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 transition-transform duration-300 hover:scale-105">
                 <Sparkles className="h-5 w-5 text-primary" />
               </div>
-              <span className="font-bold gradient-text text-xl">GenAI App</span>
+              <span className="font-bold gradient-text text-xl">Tesseract"</span>
             </Link>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">
@@ -59,13 +59,13 @@ export default function Home() {
             >
               <motion.div className="space-y-6" variants={item}>
                 <div className="inline-block rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
-                  Introducing GenAI App
+                  Introducing Tesseract
                 </div>
                 <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">
                   <span className="gradient-text">Unlock the Power</span> of AI
                 </h1>
                 <p className="max-w-[600px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
-                  Our GenAI application provides powerful tools for document chat and image generation. Sign up now to
+                  Our Tesseract application provides powerful tools for document chat and image generation. Sign up now to
                   explore the possibilities.
                 </p>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
@@ -145,7 +145,7 @@ export default function Home() {
               <div className="inline-block rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">How It Works</div>
               <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Powerful AI Features</h2>
               <p className="max-w-[900px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
-                Our GenAI application combines multiple AI capabilities to help you work smarter, not harder.
+                Our Tesseract application combines multiple AI capabilities to help you work smarter, not harder.
               </p>
             </motion.div>
 
@@ -233,7 +233,7 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               <p className="text-sm font-medium">
-                &copy; {new Date().getFullYear()} GenAI App. All rights reserved.
+                &copy; {new Date().getFullYear()} Tesseract". All rights reserved.
               </p>
             </div>
             <div className="flex items-center gap-6">

@@ -16,7 +16,7 @@ export default function DashboardLayout({
       <AppSidebar />
       <SidebarInset className="transition-all duration-300">
         <motion.div
-          className="flex-1"
+          className="flex-1 overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

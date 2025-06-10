@@ -49,7 +49,7 @@ export function AppSidebar() {
   const documentChatItems = [
     {
       title: "Chat with Document",
-      href: "/dashboard/document-chat/ocr",
+      href: "/dashboard/document-chat",
       icon: FileText,
     },
     {
@@ -108,7 +108,7 @@ export function AppSidebar() {
             <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary/10 transition-all duration-300 group-hover:bg-primary/20">
               <Sparkles className="h-5 w-5 text-primary" />
             </div>
-            <span className="gradient-text text-xl transition-all group-hover:scale-105">GenAI App</span>
+            <span className="gradient-text text-xl transition-all group-hover:scale-105">Tesseract</span>
           </Link>
         </SidebarHeader>
         <SidebarContent>

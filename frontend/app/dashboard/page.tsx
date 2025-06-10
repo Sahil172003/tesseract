@@ -24,7 +24,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6 ">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -84,7 +84,7 @@ export default function DashboardPage() {
               </div>
               <CardTitle className="text-2xl">Document Chat</CardTitle>
               <CardDescription className="text-base">
-                Chat with documents, databases, and visualize data
+                Chat with documents, databases
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -99,7 +99,7 @@ export default function DashboardPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                  <span>Create beautiful visualizations from your data</span>
+                  <span>Interact with your data seamlessly</span>
                 </li>
               </ul>
             </CardContent>
@@ -122,21 +122,21 @@ export default function DashboardPage() {
                 <ImageIcon className="h-6 w-6 text-primary" />
               </div>
               <CardTitle className="text-2xl">Chat with Sql</CardTitle>
-              <CardDescription className="text-base">Generate stunning images with AI</CardDescription>
+              <CardDescription className="text-base">Connect and query your SQLite database</CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3 text-sm">
                 <li className="flex items-start gap-2">
                   <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                  <span>Create images from text descriptions</span>
+                  <span>View, filter, and analyze results instantly</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                  <span>Customize style, resolution, and more</span>
+                  <span>Understand schema with smart suggestions</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                  <span>Download and share your creations</span>
+                  <span>Get AI explanations for query results</span>
                 </li>
               </ul>
             </CardContent>
@@ -157,7 +157,7 @@ export default function DashboardPage() {
               <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 transition-all duration-300 group-hover:bg-primary/20">
                 <BarChart3 className="h-6 w-6 text-primary" />
               </div>
-              <CardTitle className="text-2xl">Data Analysis</CardTitle>
+              <CardTitle className="text-2xl">Data visualisation</CardTitle>
               <CardDescription className="text-base">
                 Analyze and visualize complex data
               </CardDescription>
@@ -240,17 +240,7 @@ export default function DashboardPage() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        {/* <Card className="bg-card/50 border-border/50 transition-all duration-300 hover:border-primary/10">
-          <div className="px-6 py-8 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-4">
-              <Clock className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-medium mb-2">No recent activity</h3>
-            <p className="text-muted-foreground max-w-[500px] mx-auto">
-              You haven't used any features yet. Get started by selecting one of the options above.
-            </p>
-          </div>
-        </Card> */}
+       
       </motion.div>
     </div>
   )

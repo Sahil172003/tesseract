@@ -148,7 +148,7 @@ export default function ImageGenerationPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <h1 className="text-3xl font-bold tracking-tight gradient-text">Image Generation</h1>
         <p className="text-muted-foreground mt-1">Generate stunning images using AI with text prompts.</p>
@@ -156,7 +156,7 @@ export default function ImageGenerationPage() {
 
       <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
         <motion.div
-          className="space-y-6"
+          className="space-y-4"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
@@ -217,7 +217,7 @@ export default function ImageGenerationPage() {
                         <SheetTitle>Generation Settings</SheetTitle>
                         <SheetDescription>Customize your image generation settings.</SheetDescription>
                       </SheetHeader>
-                      <div className="space-y-6 py-6">
+                      <div className="space-y-4 py-6">
                         <div className="space-y-2">
                           <label className="text-sm font-medium">Resolution</label>
                           <Select value={resolution} onValueChange={setResolution}>
