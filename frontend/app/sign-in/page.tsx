@@ -64,6 +64,7 @@ export default function SignInPage() {
 
   return (
     <motion.div
+      style={{paddingLeft:"20rem"}}
       className="container flex h-screen w-screen flex-col items-center justify-center"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
