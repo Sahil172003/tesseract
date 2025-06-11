@@ -241,7 +241,7 @@ export default function VisualizationPage() {
   }
 
   return (
-    <div className="min-h-screen w-full max-w-none p-2 sm:p-4 md:p-6 space-y-4 md:space-y-6 overflow-x-hidden">
+    <div className="new min-h-screen w-full max-w-none p-2 sm:p-4 md:p-6 space-y-4 md:space-y-6 overflow-x-hidden">
       <div className="w-full">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight break-words">Data Visualization & Analysis</h1>
         <p className="text-sm md:text-base text-muted-foreground mt-1">Upload data, create visualizations, and ask questions about your dataset.</p>

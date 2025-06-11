@@ -108,7 +108,7 @@ export default function OCRChatPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="new">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <h1 className="text-3xl font-bold tracking-tight gradient-text">Chat with Document</h1>
         <p className="text-muted-foreground mt-1">Upload a document and chat with its contents using OCR technology.</p>
