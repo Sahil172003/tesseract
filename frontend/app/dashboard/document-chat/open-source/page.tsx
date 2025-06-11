@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
-import { FileText, Upload, Send, X, Loader2, FileUp, ChevronDown, Bot, User } from "lucide-react"
+import { FileText, Upload, Send, X, Loader2, FileUp, ChevronDown, Bot, User, RefreshCw, Replace, File } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -37,6 +37,11 @@ interface NvidiaModel {
   name: string
 }
 
+interface DocumentInfo {
+  filename: string
+  format: string
+}
+
 export default function DocumentChatPage() {
   const { toast } = useToast()
   const [file, setFile] = useState<File | null>(null)
@@ -48,7 +53,8 @@ export default function DocumentChatPage() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [selectedModel, setSelectedModel] = useState("meta/llama-3.1-405b-instruct")
   const [availableModels, setAvailableModels] = useState<NvidiaModel[]>([])
-  const [showModelSelector, setShowModelSelector] = useState(true) // Changed to true by default
+  const [showModelSelector, setShowModelSelector] = useState(true)
+  const [currentDocumentInfo, setCurrentDocumentInfo] = useState<DocumentInfo | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -125,7 +131,10 @@ export default function DocumentChatPage() {
         
         const data = await response.json()
         setSession(data)
-        setMessages([])
+        setCurrentDocumentInfo({
+          filename: data.filename,
+          format: data.file_format
+        })
         
         // Small delay to show 100% completion
         setTimeout(() => {
@@ -158,7 +167,7 @@ export default function DocumentChatPage() {
 
   // Handle sending a message
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || !session) return
+    if (!inputMessage.trim()) return
 
     const userMessage: ChatMessage = {
       role: "user",
@@ -178,7 +187,7 @@ export default function DocumentChatPage() {
         },
         body: JSON.stringify({
           question: userMessage.content,
-          session_id: session.session_id,
+          session_id: session?.session_id || null,
           model: selectedModel,
         }),
       })
@@ -191,6 +200,11 @@ export default function DocumentChatPage() {
           timestamp: new Date().toISOString(),
         }
         setMessages((prev) => [...prev, aiMessage])
+        
+        // Update document info if provided in response
+        if (data.document_info) {
+          setCurrentDocumentInfo(data.document_info)
+        }
       } else {
         const error = await response.json()
         throw new Error(error.detail || "Chat request failed")
@@ -214,15 +228,53 @@ export default function DocumentChatPage() {
     }
   }
 
-  // Clear the current document
-  const handleClearDocument = () => {
+  // Replace the current document
+  const handleReplaceDocument = () => {
     setFile(null)
     setSession(null)
-    setMessages([])
-    setInputMessage("")
+    setCurrentDocumentInfo(null)
     setUploadProgress(0)
-    setShowModelSelector(true) // Keep model selector visible
     if (fileInputRef.current) fileInputRef.current.value = ""
+    
+    // Trigger file upload immediately
+    triggerFileUpload()
+  }
+
+  // Clear the current document but keep chat history
+  const handleRemoveDocument = () => {
+    setFile(null)
+    setSession(null)
+    setCurrentDocumentInfo(null)
+    setUploadProgress(0)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+    
+    toast({
+      title: "Document removed",
+      description: "Document has been removed. You can continue with general chat or upload a new document.",
+      variant: "default",
+    })
+  }
+
+  // Clear all messages
+  const handleClearChat = async () => {
+    setMessages([])
+    
+    // Clear general chat history on backend if no document session
+    if (!session) {
+      try {
+        await fetch("http://localhost:8000/api/document-chat/chat/clear", {
+          method: "DELETE",
+        })
+      } catch (error) {
+        console.error("Failed to clear general chat:", error)
+      }
+    }
+    
+    toast({
+      title: "Chat cleared",
+      description: "All chat messages have been cleared.",
+      variant: "default",
+    })
   }
 
   // Trigger file input click
@@ -233,8 +285,8 @@ export default function DocumentChatPage() {
   return (
     <div className="new">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <h1 className="text-3xl font-bold tracking-tight gradient-text">Chat with Document</h1>
-        <p className="text-muted-foreground mt-1">Upload a document and chat with its contents using NVIDIA NIM models.</p>
+        <h1 className="text-3xl font-bold tracking-tight gradient-text">AI Chat Assistant</h1>
+        <p className="text-muted-foreground mt-1">Chat with AI models or upload a document for document-specific analysis and Q&A.</p>
       </motion.div>
 
       <div className="grid gap-6 md:grid-cols-[1fr_2fr]">
@@ -279,7 +331,7 @@ export default function DocumentChatPage() {
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground mt-2">
-                        Choose the AI model to analyze your document. Larger models provide more detailed responses.
+                        Choose the AI model for your conversations. Works for both general chat and document analysis.
                       </p>
                     </motion.div>
                   )}
@@ -301,7 +353,7 @@ export default function DocumentChatPage() {
                     <FileText className="h-6 w-6" />
                   </div>
                   <div className="space-y-1 text-center">
-                    <p className="text-sm font-medium">Upload a document</p>
+                    <p className="text-sm font-medium">Upload a document (Optional)</p>
                     <p className="text-xs text-muted-foreground">PDF, DOCX, TXT, CSV, Excel, or image files</p>
                   </div>
                   <input
@@ -316,6 +368,7 @@ export default function DocumentChatPage() {
                   <Button
                     onClick={triggerFileUpload}
                     className="gap-2 shadow-md hover:shadow-lg transition-all duration-300"
+                    disabled={isProcessing}
                   >
                     <Upload className="h-4 w-4" />
                     Upload Document
@@ -337,15 +390,27 @@ export default function DocumentChatPage() {
                         )}
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleClearDocument}
-                      title="Remove document"
-                      className="rounded-full hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center space-x-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleReplaceDocument}
+                        title="Replace document"
+                        className="rounded-full hover:bg-blue-50 hover:text-blue-600"
+                        disabled={isProcessing}
+                      >
+                        <Replace className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleRemoveDocument}
+                        title="Remove document"
+                        className="rounded-full hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
 
                   {isProcessing ? (
@@ -398,24 +463,61 @@ export default function DocumentChatPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
+          {/* Chat Header */}
+          <div className="flex items-center justify-between p-4 border-b bg-background/50 backdrop-blur-sm">
+            <div className="flex items-center space-x-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                <Bot className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium">AI Assistant</h3>
+                <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                  {currentDocumentInfo ? (
+                    <>
+                      <File className="h-3 w-3" />
+                      <span>Document: {currentDocumentInfo.filename}</span>
+                    </>
+                  ) : (
+                    <span>General conversation mode</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            {messages.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearChat}
+                className="text-xs"
+              >
+                Clear Chat
+              </Button>
+            )}
+          </div>
+
           <div className="flex-1 overflow-y-auto p-4">
             {messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-center">
                 <div className="feature-icon mb-4">
-                  <FileText className="h-6 w-6" />
+                  <Bot className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg font-medium">Chat with your document</h3>
+                <h3 className="text-lg font-medium">
+                  {currentDocumentInfo ? "Chat with your document" : "Start a conversation"}
+                </h3>
                 <p className="mt-2 text-sm text-muted-foreground max-w-md">
-                  Upload a document and ask questions about its contents. Our AI will analyze the document using advanced
-                  language models and provide accurate answers.
+                  {currentDocumentInfo 
+                    ? `Ask questions about ${currentDocumentInfo.filename}. The AI will analyze the document and provide accurate answers.`
+                    : "Ask me anything! You can have a general conversation with AI or upload a document for document-specific analysis."
+                  }
                 </p>
-                {!file && (
+                {!currentDocumentInfo && (
                   <Button
                     onClick={triggerFileUpload}
-                    className="mt-4 gap-2 shadow-md hover:shadow-lg transition-all duration-300"
+                    variant="outline"
+                    className="mt-4 gap-2"
                   >
                     <FileUp className="h-4 w-4" />
-                    Upload Document
+                    Upload Document for Analysis
                   </Button>
                 )}
               </div>
@@ -460,7 +562,9 @@ export default function DocumentChatPage() {
                       <div className="flex items-center space-x-2">
                         <Bot className="h-4 w-4" />
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <p className="text-sm">Analyzing document...</p>
+                        <p className="text-sm">
+                          {currentDocumentInfo ? "Analyzing document..." : "Thinking..."}
+                        </p>
                       </div>
                     </div>
                   </motion.div>
@@ -474,24 +578,24 @@ export default function DocumentChatPage() {
             <div className="flex space-x-2">
               <Textarea
                 placeholder={
-                  session
-                    ? `Ask a question about ${session.filename}...`
-                    : "Upload a document to start chatting..."
+                  currentDocumentInfo
+                    ? `Ask a question about ${currentDocumentInfo.filename}...`
+                    : "Ask me anything or upload a document for analysis..."
                 }
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault()
-                    if (session && !isProcessing && !isLoading) handleSendMessage()
+                    if (!isProcessing && !isLoading) handleSendMessage()
                   }
                 }}
                 className="min-h-[60px] flex-1 resize-none rounded-xl border-muted-foreground/20 focus:border-primary"
-                disabled={!session || isProcessing || isLoading}
+                disabled={isProcessing || isLoading}
               />
               <Button
                 onClick={handleSendMessage}
-                disabled={!session || !inputMessage.trim() || isProcessing || isLoading}
+                disabled={!inputMessage.trim() || isProcessing || isLoading}
                 className="h-auto rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
               >
                 <Send className="h-4 w-4" />

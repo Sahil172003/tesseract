@@ -61,14 +61,15 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     question: str
-    session_id: str
+    session_id: Optional[str] = None  # Make session_id optional
     model: Optional[str] = "meta/llama-3.1-405b-instruct"
 
 class ChatResponse(BaseModel):
     status: str
     message: str
-    session_id: str
+    session_id: Optional[str] = None
     history: List[ChatMessage]
+    document_info: Optional[Dict[str, str]] = None
 
 class ModelListResponse(BaseModel):
     status: str
@@ -346,6 +347,7 @@ class DocumentChatManager:
     def __init__(self):
         self.processor = DocumentProcessor()
         self.sessions: Dict[str, Dict[str, Any]] = {}
+        self.general_chat_history: List[Dict[str, Any]] = []  # For general chat without documents
         self.embeddings = None
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
@@ -401,22 +403,28 @@ class DocumentChatManager:
         """Get session data"""
         return self.sessions.get(session_id)
     
-    def add_message_to_history(self, session_id: str, role: str, content: str):
-        """Add message to chat history"""
-        if session_id in self.sessions:
-            message = {
-                'role': role,
-                'content': content,
-                'timestamp': datetime.now().isoformat()
-            }
-            self.sessions[session_id]['chat_history'].append(message)
-    
-    def answer_question(self, session_id: str, question: str, model: str = "meta/llama-3.1-405b-instruct") -> str:
-        """Answer question about document using specified model"""
-        session = self.get_session(session_id)
-        if not session:
-            raise ValueError("Session not found")
+    def add_message_to_history(self, session_id: Optional[str], role: str, content: str):
+        """Add message to chat history (general or session-specific)"""
+        message = {
+            'role': role,
+            'content': content,
+            'timestamp': datetime.now().isoformat()
+        }
         
+        if session_id and session_id in self.sessions:
+            self.sessions[session_id]['chat_history'].append(message)
+        else:
+            self.general_chat_history.append(message)
+    
+    def get_chat_history(self, session_id: Optional[str]) -> List[Dict[str, Any]]:
+        """Get chat history (general or session-specific)"""
+        if session_id and session_id in self.sessions:
+            return self.sessions[session_id]['chat_history']
+        else:
+            return self.general_chat_history
+    
+    def answer_question(self, session_id: Optional[str], question: str, model: str = "meta/llama-3.1-405b-instruct") -> str:
+        """Answer question about document using specified model or general chat"""
         try:
             # Add user question to history
             self.add_message_to_history(session_id, "user", question)
@@ -424,35 +432,48 @@ class DocumentChatManager:
             # Get NVIDIA API key
             nvidia_api_key = os.getenv("NVIDIA_NIM_API_KEY") or os.getenv("NVIDIA_API_KEY")
             if not nvidia_api_key:
-                fallback_response = self._get_fallback_response(session['content'], question)
+                fallback_response = self._get_fallback_response(session_id, question)
                 self.add_message_to_history(session_id, "assistant", fallback_response)
                 return fallback_response
             
-            # Use vector store if available
-            if session['vector_store'] and self.embeddings:
-                try:
-                    docs = session['vector_store'].similarity_search(question, k=3)
-                    context = "\n\n".join([doc.page_content for doc in docs])
-                except Exception as e:
-                    logger.warning(f"Vector search failed: {e}")
-                    context = session['content'][:4000]  # Fallback to truncated content
-            else:
-                context = session['content'][:4000]  # Use first 4000 chars
-            
-            # Create LLM instance
-            llm = ChatNVIDIA(model=model, nvidia_api_key=nvidia_api_key)
-            
-            # Format prompt with context
-            prompt = f"""
+            # Prepare context based on whether we have a document session
+            if session_id and session_id in self.sessions:
+                session = self.sessions[session_id]
+                # Use vector store if available
+                if session['vector_store'] and self.embeddings:
+                    try:
+                        docs = session['vector_store'].similarity_search(question, k=3)
+                        context = "\n\n".join([doc.page_content for doc in docs])
+                    except Exception as e:
+                        logger.warning(f"Vector search failed: {e}")
+                        context = session['content'][:4000]  # Fallback to truncated content
+                else:
+                    context = session['content'][:4000]  # Use first 4000 chars
+                
+                # Format prompt with document context
+                prompt = f"""
 Based on the following document content, please answer the user's question accurately and concisely.
 
-Document Content:
+Document: {session['filename']}
+Content:
 {context}
 
 Question: {question}
 
 Please provide a clear and informative answer based only on the information available in the document.
 """
+            else:
+                # General chat without document context - FIXED PROMPT
+                prompt = f"""
+You are a helpful AI assistant. Please answer the following question in a clear, informative, and conversational way.
+
+Question: {question}
+
+Please provide a helpful and accurate response.
+"""
+            
+            # Create LLM instance
+            llm = ChatNVIDIA(model=model, nvidia_api_key=nvidia_api_key)
             
             # Get response from LLM
             response = llm.invoke(prompt)
@@ -469,28 +490,32 @@ Please provide a clear and informative answer based only on the information avai
             self.add_message_to_history(session_id, "assistant", fallback_response)
             return fallback_response
     
-    def _get_fallback_response(self, content: str, question: str) -> str:
+    def _get_fallback_response(self, session_id: Optional[str], question: str) -> str:
         """Provide fallback response when LLM is unavailable"""
-        # Simple keyword matching for basic responses
-        question_lower = question.lower()
-        content_lower = content.lower()
-        
-        if any(word in question_lower for word in ['what', 'describe', 'explain']):
-            # Extract first few sentences that might be relevant
-            sentences = content.split('.')[:3]
-            return f"Based on the document, here's what I found: {'. '.join(sentences)}."
-        
-        elif any(word in question_lower for word in ['how many', 'count', 'number']):
-            return "I can see numerical information in the document, but I need the full AI service to provide accurate counts and analysis."
-        
-        elif any(word in question_lower for word in ['summary', 'summarize', 'overview']):
-            # Return first paragraph or chunk
-            paragraphs = content.split('\n\n')
-            first_para = paragraphs[0] if paragraphs else content[:500]
-            return f"Here's a summary based on the document: {first_para}..."
-        
+        if session_id and session_id in self.sessions:
+            session = self.sessions[session_id]
+            content = session['content']
+            content_lower = content.lower()
+            question_lower = question.lower()
+            
+            if any(word in question_lower for word in ['what', 'describe', 'explain']):
+                # Extract first few sentences that might be relevant
+                sentences = content.split('.')[:3]
+                return f"Based on the document, here's what I found: {'. '.join(sentences)}."
+            
+            elif any(word in question_lower for word in ['how many', 'count', 'number']):
+                return f"I can see numerical information in {session['filename']}, but I need the full AI service to provide accurate counts and analysis."
+            
+            elif any(word in question_lower for word in ['summary', 'summarize', 'overview']):
+                # Return first paragraph or chunk
+                paragraphs = content.split('\n\n')
+                first_para = paragraphs[0] if paragraphs else content[:500]
+                return f"Here's a summary based on the document: {first_para}..."
+            
+            else:
+                return f"I can see your question relates to {session['filename']}, but I need the full AI service to provide detailed analysis. Please ensure your API configuration is correct."
         else:
-            return "I can see your question relates to the document content, but I need the full AI service to provide detailed analysis. Please ensure your API configuration is correct."
+            return "I can provide general assistance, but I need the full AI service to give you the best responses. Please ensure your API configuration is correct."
     
     def clear_session(self, session_id: str) -> bool:
         """Clear a specific session"""
@@ -498,6 +523,10 @@ Please provide a clear and informative answer based only on the information avai
             del self.sessions[session_id]
             return True
         return False
+    
+    def clear_general_chat(self):
+        """Clear general chat history"""
+        self.general_chat_history.clear()
     
     def get_all_sessions(self) -> List[Dict[str, Any]]:
         """Get all active sessions"""
@@ -579,15 +608,11 @@ async def upload_document(file: UploadFile = File(...)):
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_document(request: ChatRequest):
-    """Chat with uploaded document"""
+    """Chat with uploaded document or general chat"""
     try:
-        session = chat_manager.get_session(request.session_id)
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
-        
         logger.info(f"Processing chat question: {request.question}")
         
-        # Answer question
+        # Answer question (works with or without session_id)
         answer = chat_manager.answer_question(
             request.session_id, 
             request.question, 
@@ -601,14 +626,25 @@ async def chat_with_document(request: ChatRequest):
                 content=msg['content'],
                 timestamp=msg['timestamp']
             )
-            for msg in session['chat_history']
+            for msg in chat_manager.get_chat_history(request.session_id)
         ]
+        
+        # Get document info if session exists
+        document_info = None
+        if request.session_id:
+            session = chat_manager.get_session(request.session_id)
+            if session:
+                document_info = {
+                    "filename": session['filename'],
+                    "format": session['format']
+                }
         
         return ChatResponse(
             status="success",
             message=answer,
             session_id=request.session_id,
-            history=history
+            history=history,
+            document_info=document_info
         )
         
     except HTTPException:
@@ -640,6 +676,16 @@ async def delete_session(session_id: str):
         raise
     except Exception as e:
         logger.error(f"Error deleting session: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/chat/clear")
+async def clear_general_chat():
+    """Clear general chat history"""
+    try:
+        chat_manager.clear_general_chat()
+        return {"status": "success", "message": "General chat history cleared"}
+    except Exception as e:
+        logger.error(f"Error clearing general chat: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/test")
