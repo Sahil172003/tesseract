@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import routers directly from the routers directory
-from routers import image_generation, sql_chat, data_visualization
+from routers import image_generation, sql_chat, data_visualization, open_source_summarizer
 
 app = FastAPI(
     title="Tesseract API",
@@ -28,6 +28,7 @@ app.add_middleware(
 app.include_router(image_generation.router)
 app.include_router(sql_chat.router)
 app.include_router(data_visualization.router)
+app.include_router(open_source_summarizer.router)
 
 @app.get("/")
 async def root():
@@ -61,5 +62,6 @@ if __name__ == "__main__":
     print("- http://localhost:8000/health")
     print("- http://localhost:8000/api/image-generation/test")
     print("- http://localhost:8000/api/data-visualization/test")
+    print("- http://localhost:8000/api/document-chat/test")
     print("- http://localhost:8000/debug/routes")
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)

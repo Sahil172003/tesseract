@@ -3,7 +3,14 @@
 @tailwind utilities;
 
 .new {
-  width: 84rem;
+  width: 75rem;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+.viz {
+  width: 75rem;
   height: 100vh;
   margin: 0;
   padding: 0;

@@ -2,24 +2,53 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
-import { FileText, Upload, Send, X, Loader2, FileUp } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
+import { FileText, Upload, Send, X, Loader2, FileUp, ChevronDown, Bot, User } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Progress } from "@/components/ui/progress"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
-export default function OCRChatPage() {
+interface ChatMessage {
+  role: "user" | "assistant"
+  content: string
+  timestamp: string
+}
+
+interface DocumentSession {
+  session_id: string
+  filename: string
+  file_format: string
+  content_preview: string
+  content_length: number
+}
+
+interface NvidiaModel {
+  id: string
+  name: string
+}
+
+export default function DocumentChatPage() {
   const { toast } = useToast()
   const [file, setFile] = useState<File | null>(null)
-  const [extractedText, setExtractedText] = useState<string>("")
-  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([])
+  const [session, setSession] = useState<DocumentSession | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [selectedModel, setSelectedModel] = useState("meta/llama-3.1-405b-instruct")
+  const [availableModels, setAvailableModels] = useState<NvidiaModel[]>([])
+  const [showModelSelector, setShowModelSelector] = useState(true) // Changed to true by default
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -28,8 +57,38 @@ export default function OCRChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  // Handle file upload
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Load available models on component mount
+  useEffect(() => {
+    loadAvailableModels()
+  }, [])
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  const loadAvailableModels = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/api/document-chat/models")
+      if (response.ok) {
+        const data = await response.json()
+        setAvailableModels(data.models)
+      }
+    } catch (error) {
+      console.error("Failed to load models:", error)
+      // Fallback models
+      setAvailableModels([
+        { id: "meta/llama-3.1-405b-instruct", name: "Llama 3.1 405B Instruct" },
+        { id: "meta/llama-3.1-70b-instruct", name: "Llama 3.1 70B Instruct" },
+        { id: "meta/llama-3.1-8b-instruct", name: "Llama 3.1 8B Instruct" },
+        { id: "nvidia/nemotron-4-340b-instruct", name: "Nemotron-4 340B Instruct" },
+        { id: "microsoft/phi-3-medium-128k-instruct", name: "Phi-3 Medium 128K Instruct" },
+      ])
+    }
+  }
+
+  // Handle file upload with better progress handling
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
 
@@ -37,68 +96,132 @@ export default function OCRChatPage() {
     setIsProcessing(true)
     setUploadProgress(0)
 
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          return 100
-        }
-        return prev + 5
+    try {
+      const formData = new FormData()
+      formData.append("file", selectedFile)
+
+      // Better progress simulation
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 85) {
+            clearInterval(progressInterval)
+            return 85 // Stop at 85% and let the actual response complete it
+          }
+          return prev + 15
+        })
+      }, 300)
+
+      const response = await fetch("http://localhost:8000/api/document-chat/upload", {
+        method: "POST",
+        body: formData,
       })
-    }, 100)
 
-    // Simulate OCR processing
-    setTimeout(() => {
-      clearInterval(interval)
-      setUploadProgress(100)
+      // Clear the interval and complete progress
+      clearInterval(progressInterval)
+      
+      if (response.ok) {
+        // Animate to 100% quickly
+        setUploadProgress(100)
+        
+        const data = await response.json()
+        setSession(data)
+        setMessages([])
+        
+        // Small delay to show 100% completion
+        setTimeout(() => {
+          setIsProcessing(false)
+          setUploadProgress(0)
+        }, 500)
 
-      // Mock extracted text
-      // TODO : Add actual working API
-      const mockExtractedText =
-        "This is a sample extracted text from the document. It would contain the actual content of your uploaded document after OCR processing. You can now ask questions about this content."
-      setExtractedText(mockExtractedText)
+        toast({
+          title: "Document processed successfully",
+          description: `You can now chat with ${data.filename} using AI models.`,
+          variant: "default",
+        })
+      } else {
+        const error = await response.json()
+        throw new Error(error.detail || "Upload failed")
+      }
+    } catch (error) {
+      console.error("Upload error:", error)
       setIsProcessing(false)
-
+      setFile(null)
+      setUploadProgress(0)
+      
       toast({
-        title: "Document processed successfully",
-        description: "You can now chat with your document.",
-        variant: "success",
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "An error occurred during upload",
+        variant: "destructive",
       })
-    }, 2000)
+    }
   }
 
   // Handle sending a message
-  const handleSendMessage = () => {
-    if (!inputMessage.trim()) return
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || !session) return
 
-    // Add user message
-    const userMessage = { role: "user" as const, content: inputMessage }
+    const userMessage: ChatMessage = {
+      role: "user",
+      content: inputMessage,
+      timestamp: new Date().toISOString(),
+    }
+
     setMessages((prev) => [...prev, userMessage])
     setInputMessage("")
-
-    // Simulate AI response
     setIsLoading(true)
-    setTimeout(() => {
-      const aiResponse = {
-        role: "assistant" as const,
-        content: `I've analyzed the document and found information related to your query. ${Math.random() > 0.5 ? "The document mentions specific details about this topic." : "Based on the extracted text, I can provide the following information."}`,
-      }
-      setMessages((prev) => [...prev, aiResponse])
-      setIsLoading(false)
 
-      // Scroll to bottom after message is added
-      setTimeout(scrollToBottom, 100)
-    }, 1500)
+    try {
+      const response = await fetch("http://localhost:8000/api/document-chat/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          question: userMessage.content,
+          session_id: session.session_id,
+          model: selectedModel,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const aiMessage: ChatMessage = {
+          role: "assistant",
+          content: data.message,
+          timestamp: new Date().toISOString(),
+        }
+        setMessages((prev) => [...prev, aiMessage])
+      } else {
+        const error = await response.json()
+        throw new Error(error.detail || "Chat request failed")
+      }
+    } catch (error) {
+      console.error("Chat error:", error)
+      const errorMessage: ChatMessage = {
+        role: "assistant",
+        content: "Sorry, I encountered an error while processing your question. Please try again.",
+        timestamp: new Date().toISOString(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+      
+      toast({
+        title: "Chat error",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Clear the current document
   const handleClearDocument = () => {
     setFile(null)
-    setExtractedText("")
+    setSession(null)
     setMessages([])
     setInputMessage("")
     setUploadProgress(0)
+    setShowModelSelector(true) // Keep model selector visible
     if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
@@ -111,7 +234,7 @@ export default function OCRChatPage() {
     <div className="new">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <h1 className="text-3xl font-bold tracking-tight gradient-text">Chat with Document</h1>
-        <p className="text-muted-foreground mt-1">Upload a document and chat with its contents using OCR technology.</p>
+        <p className="text-muted-foreground mt-1">Upload a document and chat with its contents using NVIDIA NIM models.</p>
       </motion.div>
 
       <div className="grid gap-6 md:grid-cols-[1fr_2fr]">
@@ -121,6 +244,51 @@ export default function OCRChatPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
+          {/* Model Selector Card - Always visible */}
+          <Card className="overflow-hidden">
+            <CardContent className="p-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium">AI Model Selection</h3>
+                  <button
+                    onClick={() => setShowModelSelector(!showModelSelector)}
+                    className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <ChevronDown className={`h-4 w-4 transition-transform ${showModelSelector ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
+                
+                <AnimatePresence>
+                  {showModelSelector && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Select value={selectedModel} onValueChange={setSelectedModel}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select AI model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableModels.map((model) => (
+                            <SelectItem key={model.id} value={model.id}>
+                              {model.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Choose the AI model to analyze your document. Larger models provide more detailed responses.
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Document Upload Card */}
           <Card className="overflow-hidden">
             <CardContent className="p-4">
               {!file ? (
@@ -134,7 +302,7 @@ export default function OCRChatPage() {
                   </div>
                   <div className="space-y-1 text-center">
                     <p className="text-sm font-medium">Upload a document</p>
-                    <p className="text-xs text-muted-foreground">PDF, DOCX, or image files</p>
+                    <p className="text-xs text-muted-foreground">PDF, DOCX, TXT, CSV, Excel, or image files</p>
                   </div>
                   <input
                     ref={fileInputRef}
@@ -142,7 +310,7 @@ export default function OCRChatPage() {
                     name="file-upload"
                     type="file"
                     className="sr-only"
-                    accept=".pdf,.docx,.png,.jpg,.jpeg"
+                    accept=".pdf,.docx,.doc,.txt,.csv,.xlsx,.xls,.png,.jpg,.jpeg,.json,.html,.md,.xml,.pptx,.ppt"
                     onChange={handleFileUpload}
                   />
                   <Button
@@ -150,7 +318,7 @@ export default function OCRChatPage() {
                     className="gap-2 shadow-md hover:shadow-lg transition-all duration-300"
                   >
                     <Upload className="h-4 w-4" />
-                    Upload
+                    Upload Document
                   </Button>
                 </motion.div>
               ) : (
@@ -160,7 +328,14 @@ export default function OCRChatPage() {
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
                         <FileText className="h-4 w-4 text-primary" />
                       </div>
-                      <span className="text-sm font-medium">{file.name}</span>
+                      <div>
+                        <span className="text-sm font-medium">{file.name}</span>
+                        {session && (
+                          <p className="text-xs text-muted-foreground">
+                            {session.file_format.toUpperCase()} • {Math.round(session.content_length / 1024)}KB
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <Button
                       variant="ghost"
@@ -183,17 +358,31 @@ export default function OCRChatPage() {
                       <div className="flex items-center justify-center">
                         <Loader2 className="h-6 w-6 animate-spin text-primary" />
                       </div>
+                      <p className="text-xs text-muted-foreground text-center">
+                        Analyzing document content and preparing for AI chat...
+                      </p>
                     </div>
                   ) : (
                     <motion.div
-                      className="rounded-md border p-3"
+                      className="space-y-3"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.5 }}
                     >
-                      <h3 className="mb-2 text-sm font-medium">Extracted Text:</h3>
-                      <div className="max-h-[300px] overflow-y-auto text-sm rounded bg-muted/50 p-3">
-                        {extractedText}
+                      <div className="rounded-md border p-3">
+                        <h3 className="mb-2 text-sm font-medium">Content Preview:</h3>
+                        <div className="max-h-[200px] overflow-y-auto text-sm rounded bg-muted/50 p-3">
+                          {session?.content_preview || "Processing..."}
+                        </div>
+                      </div>
+                      
+                      <div className="text-center">
+                        <p className="text-xs text-green-600 font-medium">
+                          ✓ Document ready for AI analysis
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Using {availableModels.find(m => m.id === selectedModel)?.name || selectedModel}
+                        </p>
                       </div>
                     </motion.div>
                   )}
@@ -217,8 +406,8 @@ export default function OCRChatPage() {
                 </div>
                 <h3 className="text-lg font-medium">Chat with your document</h3>
                 <p className="mt-2 text-sm text-muted-foreground max-w-md">
-                  Upload a document and ask questions about its contents. Our AI will analyze the document and provide
-                  answers.
+                  Upload a document and ask questions about its contents. Our AI will analyze the document using advanced
+                  language models and provide accurate answers.
                 </p>
                 {!file && (
                   <Button
@@ -242,7 +431,21 @@ export default function OCRChatPage() {
                       transition={{ duration: 0.3 }}
                     >
                       <div className={`max-w-[80%] ${message.role === "user" ? "chat-bubble-user" : "chat-bubble-ai"}`}>
-                        <p className="text-sm">{message.content}</p>
+                        <div className="flex items-start space-x-2">
+                          <div className={`flex-shrink-0 ${message.role === "user" ? "order-2" : ""}`}>
+                            {message.role === "user" ? (
+                              <User className="h-4 w-4 mt-1" />
+                            ) : (
+                              <Bot className="h-4 w-4 mt-1" />
+                            )}
+                          </div>
+                          <div className={`flex-1 ${message.role === "user" ? "order-1" : ""}`}>
+                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                            <p className="text-xs opacity-60 mt-1">
+                              {new Date(message.timestamp).toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </motion.div>
                   ))}
@@ -255,8 +458,9 @@ export default function OCRChatPage() {
                   >
                     <div className="chat-bubble-ai">
                       <div className="flex items-center space-x-2">
+                        <Bot className="h-4 w-4" />
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <p className="text-sm">Thinking...</p>
+                        <p className="text-sm">Analyzing document...</p>
                       </div>
                     </div>
                   </motion.div>
@@ -269,21 +473,25 @@ export default function OCRChatPage() {
           <div className="border-t p-4 bg-background/50 backdrop-blur-sm">
             <div className="flex space-x-2">
               <Textarea
-                placeholder={file ? "Ask a question about your document..." : "Upload a document to start chatting..."}
+                placeholder={
+                  session
+                    ? `Ask a question about ${session.filename}...`
+                    : "Upload a document to start chatting..."
+                }
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault()
-                    if (file && !isProcessing) handleSendMessage()
+                    if (session && !isProcessing && !isLoading) handleSendMessage()
                   }
                 }}
                 className="min-h-[60px] flex-1 resize-none rounded-xl border-muted-foreground/20 focus:border-primary"
-                disabled={!file || isProcessing}
+                disabled={!session || isProcessing || isLoading}
               />
               <Button
                 onClick={handleSendMessage}
-                disabled={!file || !inputMessage.trim() || isProcessing}
+                disabled={!session || !inputMessage.trim() || isProcessing || isLoading}
                 className="h-auto rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
               >
                 <Send className="h-4 w-4" />
